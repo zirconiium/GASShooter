@@ -120,66 +120,6 @@ void AGSHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	BindASCInput();
 }
 
-// Server only
-void AGSHeroCharacter::PossessedBy(AController* NewController)
-{
-	Super::PossessedBy(NewController);
-
-	AGSPlayerState* PS = GetPlayerState<AGSPlayerState>();
-	if (PS)
-	{
-		// Set the ASC on the Server. Clients do this in OnRep_PlayerState()
-		AbilitySystemComponent = Cast<UGSAbilitySystemComponent>(PS->GetAbilitySystemComponent());
-
-		// AI won't have PlayerControllers so we can init again here just to be sure. No harm in initing twice for heroes that have PlayerControllers.
-		PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
-
-		WeaponChangingDelayReplicationTagChangedDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(WeaponChangingDelayReplicationTag)
-			.AddUObject(this, &AGSHeroCharacter::WeaponChangingDelayReplicationTagChanged);
-
-		// Set the AttributeSetBase for convenience attribute functions
-		AttributeSetBase = PS->GetAttributeSetBase();
-
-		AmmoAttributeSet = PS->GetAmmoAttributeSet();
-
-		// If we handle players disconnecting and rejoining in the future, we'll have to change this so that possession from rejoining doesn't reset attributes.
-		// For now assume possession = spawn/respawn.
-		InitializeAttributes();
-
-		AddStartupEffects();
-
-		AddCharacterAbilities();
-
-		AGSPlayerController* PC = Cast<AGSPlayerController>(GetController());
-		if (PC)
-		{
-			PC->CreateHUD();
-		}
-
-		if (AbilitySystemComponent->GetTagCount(DeadTag) > 0)
-		{
-			// Set Health/Mana/Stamina to their max. This is only necessary for *Respawn*.
-			SetHealth(GetMaxHealth());
-			SetMana(GetMaxMana());
-			SetStamina(GetMaxStamina());
-			SetShield(GetMaxShield());
-		}
-
-		// Remove Dead tag
-		AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(DeadTag));
-
-		InitializeFloatingStatusBar();
-
-		// If player is host on listen server, the floating status bar would have been created for them from BeginPlay before player possession, hide it
-		if (IsLocallyControlled() && IsPlayerControlled() && UIFloatingStatusBarComponent && UIFloatingStatusBar)
-		{
-			UIFloatingStatusBarComponent->SetVisibility(false, true);
-		}
-	}
-
-	SetupStartupPerspective();
-}
-
 UGSFloatingStatusBarWidget* AGSHeroCharacter::GetFloatingStatusBar()
 {
 	return UIFloatingStatusBar;
@@ -822,6 +762,68 @@ void AGSHeroCharacter::InitializeFloatingStatusBar()
 			}
 		}
 	}
+}
+
+
+
+// Server only
+void AGSHeroCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	AGSPlayerState* PS = GetPlayerState<AGSPlayerState>();
+	if (PS)
+	{
+		// Set the ASC on the Server. Clients do this in OnRep_PlayerState()
+		AbilitySystemComponent = Cast<UGSAbilitySystemComponent>(PS->GetAbilitySystemComponent());
+
+		// AI won't have PlayerControllers so we can init again here just to be sure. No harm in initing twice for heroes that have PlayerControllers.
+		PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
+
+		WeaponChangingDelayReplicationTagChangedDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(WeaponChangingDelayReplicationTag)
+			.AddUObject(this, &AGSHeroCharacter::WeaponChangingDelayReplicationTagChanged);
+
+		// Set the AttributeSetBase for convenience attribute functions
+		AttributeSetBase = PS->GetAttributeSetBase();
+
+		AmmoAttributeSet = PS->GetAmmoAttributeSet();
+
+		// If we handle players disconnecting and rejoining in the future, we'll have to change this so that possession from rejoining doesn't reset attributes.
+		// For now assume possession = spawn/respawn.
+		InitializeAttributes();
+
+		AddStartupEffects();
+
+		AddCharacterAbilities();
+
+		AGSPlayerController* PC = Cast<AGSPlayerController>(GetController());
+		if (PC)
+		{
+			PC->CreateHUD();
+		}
+
+		if (AbilitySystemComponent->GetTagCount(DeadTag) > 0)
+		{
+			// Set Health/Mana/Stamina to their max. This is only necessary for *Respawn*.
+			SetHealth(GetMaxHealth());
+			SetMana(GetMaxMana());
+			SetStamina(GetMaxStamina());
+			SetShield(GetMaxShield());
+		}
+
+		// Remove Dead tag
+		AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(DeadTag));
+
+		InitializeFloatingStatusBar();
+
+		// If player is host on listen server, the floating status bar would have been created for them from BeginPlay before player possession, hide it
+		if (IsLocallyControlled() && IsPlayerControlled() && UIFloatingStatusBarComponent && UIFloatingStatusBar)
+		{
+			UIFloatingStatusBarComponent->SetVisibility(false, true);
+		}
+	}
+
+	SetupStartupPerspective();
 }
 
 // Client only
